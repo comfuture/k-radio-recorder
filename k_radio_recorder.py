@@ -86,18 +86,28 @@ def list_stations():
             print(f"  {code}: {name}")
 
 
-def record_stream(station, channel, output, duration=None, format=None):
+def make_output_filename(station, channel, format):
+    now = datetime.now().strftime("%Y%m%d_%H%M%S")
+    ext = format.lower() if format else "mp3"
+    return f"{station}_{channel}_{now}.{ext}"
+
+
+def record_stream(station, channel, output=None, duration=None, format=None):
     print(f"[{station.upper()}] {channel} 스트림 URL 획득 중...")
     stream_url = asyncio.run(get_stream_url(station, channel))
     print(f"스트림 URL: {stream_url}")
-    
+
     # 기본 포맷을 mp3로 설정
     if format is None:
         format = "mp3"
-    
+
+    # 파일명 자동 생성
+    if not output:
+        output = make_output_filename(station, channel, format)
+
     # ffmpeg 명령어 구성
     ffmpeg_cmd = ["ffmpeg", "-y", "-i", stream_url]
-    
+
     # 포맷에 따른 인코딩 설정
     if format.lower() == "mp3":
         ffmpeg_cmd.extend(["-c:a", "libmp3lame"])
@@ -106,15 +116,13 @@ def record_stream(station, channel, output, duration=None, format=None):
     elif format.lower() == "wav":
         ffmpeg_cmd.extend(["-c:a", "pcm_s16le"])
     else:
-        # 기타 포맷의 경우 ffmpeg가 자동으로 결정하도록 함
         ffmpeg_cmd.extend(["-c:a", "copy"])
-    
-    # 녹음 시간 설정
+
     if duration:
         ffmpeg_cmd.extend(["-t", str(duration)])
-    
+
     ffmpeg_cmd.append(output)
-    
+
     print(f"녹음 시작: {output} (포맷: {format})")
     try:
         subprocess.run(ffmpeg_cmd, check=True)
@@ -133,7 +141,8 @@ def schedule_record(station, channel, output, start_time, duration, format=None)
     wait_sec = (target - now).total_seconds()
     print(f"{start_time}까지 {int(wait_sec)}초 대기 후 녹음 시작")
     time.sleep(wait_sec)
-    record_stream(station, channel, output, duration, format)
+    # 예약 녹음도 파일명 자동 생성
+    record_stream(station, channel, output=None, duration=duration, format=format)
 
 
 def interactive_mode():
@@ -155,12 +164,15 @@ def interactive_mode():
             if channel not in STATIONS[station]:
                 print("잘못된 채널 코드입니다.")
                 continue
-            output = input("저장할 파일명 입력 (예: myradio.mp3): ").strip()
-            format_input = input("출력 포맷 입력 (mp3/aac/wav, 엔터시 mp3): ").strip()
-            format = format_input if format_input else None
+            format = (
+                input("출력 포맷 입력 (mp3/aac/wav, 엔터시 mp3): ").strip().lower()
+                or "mp3"
+            )
             duration = input("녹음 시간(초, 엔터시 무제한): ").strip()
             duration = int(duration) if duration else None
-            record_stream(station, channel, output, duration, format)
+            record_stream(
+                station, channel, output=None, duration=duration, format=format
+            )
         elif choice == "3":
             print("종료합니다.")
             break
@@ -177,29 +189,42 @@ def main():
     parser_record = subparsers.add_parser("record", help="녹음 시작")
     parser_record.add_argument("--station", required=True, choices=STATIONS.keys())
     parser_record.add_argument("--channel", required=True)
-    parser_record.add_argument("--output", required=True)
     parser_record.add_argument("--duration", type=int, help="녹음 시간(초)")
-    parser_record.add_argument("--format", help="출력 포맷 (예: mp3, aac, wav). 기본값: mp3")
+    parser_record.add_argument(
+        "--format", help="출력 포맷 (예: mp3, aac, wav). 기본값: mp3"
+    )
 
     parser_schedule = subparsers.add_parser("schedule", help="예약 녹음")
     parser_schedule.add_argument("--station", required=True, choices=STATIONS.keys())
     parser_schedule.add_argument("--channel", required=True)
-    parser_schedule.add_argument("--output", required=True)
     parser_schedule.add_argument("--time", required=True, help="시작 시각(HH:MM)")
     parser_schedule.add_argument(
         "--duration", type=int, required=True, help="녹음 시간(초)"
     )
-    parser_schedule.add_argument("--format", help="출력 포맷 (예: mp3, aac, wav). 기본값: mp3")
+    parser_schedule.add_argument(
+        "--format", help="출력 포맷 (예: mp3, aac, wav). 기본값: mp3"
+    )
 
     args = parser.parse_args()
 
     if args.command == "list":
         list_stations()
     elif args.command == "record":
-        record_stream(args.station, args.channel, args.output, args.duration, args.format)
+        record_stream(
+            args.station,
+            args.channel,
+            output=None,
+            duration=args.duration,
+            format=args.format,
+        )
     elif args.command == "schedule":
         schedule_record(
-            args.station, args.channel, args.output, args.time, args.duration, args.format
+            args.station,
+            args.channel,
+            output=None,
+            start_time=args.time,
+            duration=args.duration,
+            format=args.format,
         )
     else:
         interactive_mode()
