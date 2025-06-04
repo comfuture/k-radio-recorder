@@ -9,6 +9,7 @@
 ## 주요 기능
 - 방송국/채널 목록 조회
 - 스트림 URL 자동 획득 및 ffmpeg로 녹음
+- 다양한 출력 포맷 지원 (MP3, AAC, WAV)
 - 녹음 파일명, 저장 경로 지정
 - 예약 녹음(시작 시각, 녹음 시간 지정)
 - 대화형 모드 지원(명령 인자 없이 실행 시)
@@ -46,24 +47,53 @@ python k_radio_recorder.py list
 
 ### 2. 녹음 시작
 ```sh
-python k_radio_recorder.py record --station kbs --channel 21 --output myradio.mp3
+python k_radio_recorder.py record --station kbs --channel 21 --output myradio.mp3 --format mp3
 ```
 - `--station`: 방송국 코드 (kbs, mbc, sbs)
 - `--channel`: 채널 코드 (예: 21, sfm, lovefm 등)
 - `--output`: 저장할 파일명
+- `--format`: (선택) 출력 포맷 (mp3/aac/wav). 기본값: mp3
 - `--duration`: (선택) 녹음 시간(초)
 
 ### 3. 예약 녹음
 ```sh
-python k_radio_recorder.py schedule --station sbs --channel powerfm --output myradio.aac --time 08:00 --duration 3600
+python k_radio_recorder.py schedule --station sbs --channel powerfm --output myradio.aac --time 08:00 --duration 3600 --format aac
 ```
 - `--time`: 시작 시각 (HH:MM)
 - `--duration`: 녹음 시간(초)
+- `--format`: (선택) 출력 포맷 (mp3/aac/wav). 기본값: mp3
 
 ### 4. 대화형 모드
 명령 인자 없이 실행하면 대화형 메뉴가 제공됩니다.
 ```sh
 python k_radio_recorder.py
+```
+
+---
+
+## 지원 출력 포맷
+
+### 오디오 포맷 옵션
+- **mp3** (기본값): MP3 형식으로 저장 (libmp3lame 인코더 사용)
+- **aac**: AAC 형식으로 저장 (aac 인코더 사용)  
+- **wav**: WAV 형식으로 저장 (pcm_s16le 인코더 사용)
+
+### 포맷 사용 예시
+```sh
+# MP3 형식으로 녹음 (기본값)
+python k_radio_recorder.py record --station kbs --channel 21 --output myradio.mp3
+
+# AAC 형식으로 녹음
+python k_radio_recorder.py record --station mbc --channel sfm --output myradio.aac --format aac
+
+# WAV 형식으로 녹음
+python k_radio_recorder.py record --station sbs --channel lovefm --output myradio.wav --format wav
+```
+
+### 대화형 모드에서의 포맷 선택
+대화형 모드에서는 다음과 같이 포맷을 선택할 수 있습니다:
+```
+출력 포맷 입력 (mp3/aac/wav, 엔터시 mp3): aac
 ```
 
 ---
