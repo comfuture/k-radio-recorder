@@ -45,29 +45,36 @@ uv pip install -r requirements.txt
 python k_radio_recorder.py list
 ```
 
-### 2. 녹음 시작
+### 2. 녹음 시작 (파일명 자동 생성)
 ```sh
-python k_radio_recorder.py record --station kbs --channel 21 --output myradio.mp3 --format mp3
+python k_radio_recorder.py record --station kbs --channel 21 --format mp3
 ```
 - `--station`: 방송국 코드 (kbs, mbc, sbs)
 - `--channel`: 채널 코드 (예: 21, sfm, lovefm 등)
-- `--output`: 저장할 파일명
-- `--format`: (선택) 출력 포맷 (mp3/aac/wav). 기본값: mp3
+- `--format`: (선택) 출력 포맷(mp3, aac, wav). 기본값: mp3
 - `--duration`: (선택) 녹음 시간(초)
+- **저장 파일명은 자동으로 `방송국_채널_날짜시간.확장자` 형식으로 생성됩니다.**
 
-### 3. 예약 녹음
+### 3. 예약 녹음 (파일명 자동 생성)
 ```sh
-python k_radio_recorder.py schedule --station sbs --channel powerfm --output myradio.aac --time 08:00 --duration 3600 --format aac
+python k_radio_recorder.py schedule --station sbs --channel powerfm --time 08:00 --duration 3600 --format aac
 ```
 - `--time`: 시작 시각 (HH:MM)
 - `--duration`: 녹음 시간(초)
-- `--format`: (선택) 출력 포맷 (mp3/aac/wav). 기본값: mp3
+- `--format`: (선택) 출력 포맷(mp3, aac, wav). 기본값: mp3
+- **저장 파일명은 자동으로 생성됩니다.**
 
-### 4. 대화형 모드
-명령 인자 없이 실행하면 대화형 메뉴가 제공됩니다.
+### 4. 대화형 모드 (파일명 자동 생성)
+명령 인자 없이 실행하면 대화형 메뉴가 제공되며, 파일명은 자동으로 생성됩니다.
 ```sh
 python k_radio_recorder.py
 ```
+
+---
+
+## 저장 파일명 규칙
+- 파일명은 `방송국_채널_YYYYMMDD_HHMMSS.확장자` 형식으로 자동 생성됩니다.
+- 예시: `kbs_21_20250604_153000.mp3`
 
 ---
 
