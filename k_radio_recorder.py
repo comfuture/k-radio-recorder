@@ -62,8 +62,15 @@ async def get_stream_url(station, channel):
 
 
 def load_radio_stations():
-    with open(RADIO_STATIONS_JSON, encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(RADIO_STATIONS_JSON, encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"오류: 스테이션 파일({RADIO_STATIONS_JSON})을 찾을 수 없습니다.")
+        sys.exit(1) # Or return an empty list/None for callers to handle
+    except json.JSONDecodeError:
+        print(f"오류: 스테이션 파일({RADIO_STATIONS_JSON})의 형식이 잘못되었습니다.")
+        sys.exit(1) # Or return an empty list/None for callers to handle
 
 
 def list_radio_stations():
