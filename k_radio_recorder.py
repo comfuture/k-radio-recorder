@@ -11,26 +11,9 @@ import sys
 from datetime import datetime, timedelta
 import time
 import asyncio
+import json
 
-KBS_CHANNELS = {
-    "21": "KBS 제1라디오",
-    "24": "KBS 1FM",
-    "25": "KBS 2FM",
-}
-MBC_CHANNELS = {
-    "sfm": "MBC 표준FM",
-    "mfm": "MBC FM4U",
-}
-SBS_CHANNELS = {
-    "lovefm": "SBS 러브FM",
-    "powerfm": "SBS 파워FM",
-}
-
-STATIONS = {
-    "kbs": KBS_CHANNELS,
-    "mbc": MBC_CHANNELS,
-    "sbs": SBS_CHANNELS,
-}
+RADIO_STATIONS_JSON = "radio_stations.json"
 
 
 async def get_kbs_stream_url(channel_code):
@@ -78,12 +61,30 @@ async def get_stream_url(station, channel):
         raise Exception("지원하지 않는 방송국")
 
 
-def list_stations():
-    print("방송국/채널 목록:")
-    for station, channels in STATIONS.items():
-        print(f"[{station}]")
-        for code, name in channels.items():
-            print(f"  {code}: {name}")
+def load_radio_stations():
+    with open(RADIO_STATIONS_JSON, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def list_radio_stations():
+    stations = load_radio_stations()
+    print("라디오 스테이션 목록:")
+    for idx, s in enumerate(stations, 1):
+        print(f"{idx}. {s['name']}")
+    return stations
+
+
+def select_station():
+    stations = list_radio_stations()
+    while True:
+        try:
+            sel = int(input("스테이션 번호 선택: "))
+            if 1 <= sel <= len(stations):
+                return stations[sel - 1]
+            else:
+                print("잘못된 번호입니다.")
+        except ValueError:
+            print("숫자를 입력하세요.")
 
 
 def make_output_filename(station, channel, format):
@@ -132,7 +133,36 @@ def record_stream(station, channel, output=None, duration=None, format=None):
         sys.exit(1)
 
 
-def schedule_record(station, channel, output, start_time, duration, format=None):
+def record_stream_by_station(station, duration=None, format=None):
+    url = station["url"]
+    name = station["name"]
+    now = datetime.now().strftime("%Y%m%d_%H%M%S")
+    ext = format.lower() if format else "mp3"
+    output = f"{name}_{now}.{ext}"
+    ffmpeg_cmd = ["ffmpeg", "-y", "-i", url]
+    if format is None:
+        format = "mp3"
+    if format.lower() == "mp3":
+        ffmpeg_cmd.extend(["-c:a", "libmp3lame"])
+    elif format.lower() == "aac":
+        ffmpeg_cmd.extend(["-c:a", "aac"])
+    elif format.lower() == "wav":
+        ffmpeg_cmd.extend(["-c:a", "pcm_s16le"])
+    else:
+        ffmpeg_cmd.extend(["-c:a", "copy"])
+    if duration:
+        ffmpeg_cmd.extend(["-t", str(duration)])
+    ffmpeg_cmd.append(output)
+    print(f"녹음 시작: {output} (포맷: {format})")
+    try:
+        subprocess.run(ffmpeg_cmd, check=True)
+        print("녹음 완료")
+    except subprocess.CalledProcessError:
+        print("ffmpeg 실행 오류")
+        sys.exit(1)
+
+
+def schedule_record_by_station(station, start_time, duration, format=None):
     now = datetime.now()
     target = datetime.strptime(start_time, "%H:%M")
     target = target.replace(year=now.year, month=now.month, day=now.day)
@@ -141,39 +171,38 @@ def schedule_record(station, channel, output, start_time, duration, format=None)
     wait_sec = (target - now).total_seconds()
     print(f"{start_time}까지 {int(wait_sec)}초 대기 후 녹음 시작")
     time.sleep(wait_sec)
-    # 예약 녹음도 파일명 자동 생성
-    record_stream(station, channel, output=None, duration=duration, format=format)
+    record_stream_by_station(station, duration=duration, format=format)
 
 
 def interactive_mode():
     while True:
         print("\n==== 대한민국 라디오 방송 녹음기 ====")
-        print("1. 방송국/채널 목록 보기")
+        print("1. 라디오 스테이션 목록 보기")
         print("2. 녹음 시작")
-        print("3. 종료")
-        choice = input("메뉴 선택 (1/2/3): ").strip()
+        print("3. 예약 녹음")
+        print("4. 종료")
+        choice = input("메뉴 선택 (1/2/3/4): ").strip()
         if choice == "1":
-            list_stations()
+            list_radio_stations()
         elif choice == "2":
-            list_stations()
-            station = input("방송국 코드 입력 (예: kbs, mbc, sbs): ").strip().lower()
-            if station not in STATIONS:
-                print("잘못된 방송국 코드입니다.")
-                continue
-            channel = input("채널 코드 입력 (예: 21, sfm, lovefm 등): ").strip()
-            if channel not in STATIONS[station]:
-                print("잘못된 채널 코드입니다.")
-                continue
+            station = select_station()
             format = (
                 input("출력 포맷 입력 (mp3/aac/wav, 엔터시 mp3): ").strip().lower()
                 or "mp3"
             )
             duration = input("녹음 시간(초, 엔터시 무제한): ").strip()
             duration = int(duration) if duration else None
-            record_stream(
-                station, channel, output=None, duration=duration, format=format
-            )
+            record_stream_by_station(station, duration=duration, format=format)
         elif choice == "3":
+            station = select_station()
+            start_time = input("시작 시각 입력 (HH:MM): ").strip()
+            duration = int(input("녹음 시간(초): ").strip())
+            format = (
+                input("출력 포맷 입력 (mp3/aac/wav, 엔터시 mp3): ").strip().lower()
+                or "mp3"
+            )
+            schedule_record_by_station(station, start_time, duration, format=format)
+        elif choice == "4":
             print("종료합니다.")
             break
         else:
@@ -184,19 +213,21 @@ def main():
     parser = argparse.ArgumentParser(description="대한민국 라디오 방송 스트림 녹음 CLI")
     subparsers = parser.add_subparsers(dest="command")
 
-    subparsers.add_parser("list", help="방송국/채널 목록 출력")
+    subparsers.add_parser("list", help="라디오 스테이션 목록 출력")
 
     parser_record = subparsers.add_parser("record", help="녹음 시작")
-    parser_record.add_argument("--station", required=True, choices=STATIONS.keys())
-    parser_record.add_argument("--channel", required=True)
+    parser_record.add_argument(
+        "--station", type=int, help="스테이션 번호 (list 명령으로 확인)"
+    )
     parser_record.add_argument("--duration", type=int, help="녹음 시간(초)")
     parser_record.add_argument(
         "--format", help="출력 포맷 (예: mp3, aac, wav). 기본값: mp3"
     )
 
     parser_schedule = subparsers.add_parser("schedule", help="예약 녹음")
-    parser_schedule.add_argument("--station", required=True, choices=STATIONS.keys())
-    parser_schedule.add_argument("--channel", required=True)
+    parser_schedule.add_argument(
+        "--station", type=int, help="스테이션 번호 (list 명령으로 확인)"
+    )
     parser_schedule.add_argument("--time", required=True, help="시작 시각(HH:MM)")
     parser_schedule.add_argument(
         "--duration", type=int, required=True, help="녹음 시간(초)"
@@ -208,20 +239,26 @@ def main():
     args = parser.parse_args()
 
     if args.command == "list":
-        list_stations()
+        list_radio_stations()
     elif args.command == "record":
-        record_stream(
-            args.station,
-            args.channel,
-            output=None,
+        stations = load_radio_stations()
+        if args.station is None or not (1 <= args.station <= len(stations)):
+            print("--station 인자에 올바른 번호를 입력하세요. (list 명령으로 확인)")
+            sys.exit(1)
+        station = stations[args.station - 1]
+        record_stream_by_station(
+            station,
             duration=args.duration,
             format=args.format,
         )
     elif args.command == "schedule":
-        schedule_record(
-            args.station,
-            args.channel,
-            output=None,
+        stations = load_radio_stations()
+        if args.station is None or not (1 <= args.station <= len(stations)):
+            print("--station 인자에 올바른 번호를 입력하세요. (list 명령으로 확인)")
+            sys.exit(1)
+        station = stations[args.station - 1]
+        schedule_record_by_station(
+            station,
             start_time=args.time,
             duration=args.duration,
             format=args.format,

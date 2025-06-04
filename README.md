@@ -7,8 +7,8 @@
 ---
 
 ## 주요 기능
-- 방송국/채널 목록 조회
-- 스트림 URL 자동 획득 및 ffmpeg로 녹음
+- 라디오 스테이션 목록을 번호와 함께 조회 (radio_stations.json 기반)
+- 번호 선택만으로 간편하게 녹음/예약녹음 가능
 - 다양한 출력 포맷 지원 (MP3, AAC, WAV)
 - 녹음 파일명, 저장 경로 지정
 - 예약 녹음(시작 시각, 녹음 시간 지정)
@@ -25,56 +25,61 @@
   - Ubuntu: `sudo apt install ffmpeg`
   - Windows: [ffmpeg 공식 다운로드](https://ffmpeg.org/download.html)
 
-### 2. 의존성 설치 (uv 사용 권장)
+### 2. 의존성 설치
 ```sh
 uv venv --python 3.12
 source .venv/bin/activate
-uv pip install -r requirements.txt
-```
-또는 pyproject.toml 기반 설치:
-```sh
-uv pip install -r requirements.txt
+uv sync
 ```
 
 ---
 
 ## 사용법
 
-### 1. 방송국/채널 목록 확인
+### 1. 라디오 스테이션 목록 확인
 ```sh
 python k_radio_recorder.py list
 ```
+- 번호와 함께 스테이션 목록이 출력됩니다.
 
-### 2. 녹음 시작 (파일명 자동 생성)
+### 2. 녹음 시작 (번호로 선택)
 ```sh
-python k_radio_recorder.py record --station kbs --channel 21 --format mp3
+python k_radio_recorder.py record --station 5 --format mp3 --duration 60
 ```
-- `--station`: 방송국 코드 (kbs, mbc, sbs)
-- `--channel`: 채널 코드 (예: 21, sfm, lovefm 등)
+- `--station`: 스테이션 번호 (list 명령으로 확인)
 - `--format`: (선택) 출력 포맷(mp3, aac, wav). 기본값: mp3
 - `--duration`: (선택) 녹음 시간(초)
-- **저장 파일명은 자동으로 `방송국_채널_날짜시간.확장자` 형식으로 생성됩니다.**
+- **저장 파일명은 자동으로 `스테이션이름_날짜시간.확장자` 형식으로 생성됩니다.**
 
-### 3. 예약 녹음 (파일명 자동 생성)
+### 3. 예약 녹음 (번호로 선택)
 ```sh
-python k_radio_recorder.py schedule --station sbs --channel powerfm --time 08:00 --duration 3600 --format aac
+python k_radio_recorder.py schedule --station 2 --time 08:00 --duration 3600 --format aac
 ```
+- `--station`: 스테이션 번호 (list 명령으로 확인)
 - `--time`: 시작 시각 (HH:MM)
 - `--duration`: 녹음 시간(초)
 - `--format`: (선택) 출력 포맷(mp3, aac, wav). 기본값: mp3
 - **저장 파일명은 자동으로 생성됩니다.**
 
-### 4. 대화형 모드 (파일명 자동 생성)
-명령 인자 없이 실행하면 대화형 메뉴가 제공되며, 파일명은 자동으로 생성됩니다.
+### 4. 대화형 모드 (번호로 선택)
+명령 인자 없이 실행하면 대화형 메뉴가 제공되며, 스테이션 번호를 선택해 녹음/예약녹음이 가능합니다.
 ```sh
 python k_radio_recorder.py
 ```
+- 스테이션 목록이 번호와 함께 출력되고, 번호를 입력해 녹음/예약녹음을 진행합니다.
+- 출력 포맷(mp3/aac/wav)과 녹음 시간(초)도 입력받을 수 있습니다.
+
+---
+
+## radio_stations.json
+
+라디오 스테이션 정보는 `radio_stations.json` 파일에 저장되어 있으며, 방송국/채널 코드 대신 번호로 선택할 수 있습니다.
 
 ---
 
 ## 저장 파일명 규칙
-- 파일명은 `방송국_채널_YYYYMMDD_HHMMSS.확장자` 형식으로 자동 생성됩니다.
-- 예시: `kbs_21_20250604_153000.mp3`
+- 파일명은 `스테이션이름_YYYYMMDD_HHMMSS.확장자` 형식으로 자동 생성됩니다.
+- 예시: `MBC FM4U_20250604_164046.mp3`
 
 ---
 
@@ -82,19 +87,14 @@ python k_radio_recorder.py
 
 ### 오디오 포맷 옵션
 - **mp3** (기본값): MP3 형식으로 저장 (libmp3lame 인코더 사용)
-- **aac**: AAC 형식으로 저장 (aac 인코더 사용)  
+- **aac**: AAC 형식으로 저장 (aac 인코더 사용)
 - **wav**: WAV 형식으로 저장 (pcm_s16le 인코더 사용)
 
 ### 포맷 사용 예시
 ```sh
-# MP3 형식으로 녹음 (기본값)
-python k_radio_recorder.py record --station kbs --channel 21 --output myradio.mp3
-
-# AAC 형식으로 녹음
-python k_radio_recorder.py record --station mbc --channel sfm --output myradio.aac --format aac
-
-# WAV 형식으로 녹음
-python k_radio_recorder.py record --station sbs --channel lovefm --output myradio.wav --format wav
+python k_radio_recorder.py record --station 1 --format mp3
+python k_radio_recorder.py record --station 2 --format aac --duration 120
+python k_radio_recorder.py schedule --station 3 --time 09:00 --duration 1800 --format wav
 ```
 
 ### 대화형 모드에서의 포맷 선택
@@ -102,13 +102,6 @@ python k_radio_recorder.py record --station sbs --channel lovefm --output myradi
 ```
 출력 포맷 입력 (mp3/aac/wav, 엔터시 mp3): aac
 ```
-
----
-
-## 지원 방송국/채널 예시
-- KBS: 21(제1라디오), 24(1FM), 25(2FM)
-- MBC: sfm(표준FM), mfm(FM4U)
-- SBS: lovefm(러브FM), powerfm(파워FM)
 
 ---
 

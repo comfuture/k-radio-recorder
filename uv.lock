@@ -131,7 +131,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "argparse" },
+    { name = "argparse", specifier = ">=1.4.0" },
     { name = "httpx", specifier = ">=0.28.1" },
 ]
 
