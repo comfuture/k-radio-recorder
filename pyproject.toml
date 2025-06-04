@@ -4,4 +4,4 @@ version = "0.2.0"
 description = "대한민국 라디오 방송 스트림 녹음 CLI"
 authors = [{ name = "comfuture" }]
 requires-python = ">=3.8"
-dependencies = ["argparse>=1.4.0", "httpx>=0.28.1"]
+dependencies = ["httpx>=0.28.1"]
